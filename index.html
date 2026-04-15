@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TCAS Navigator — ประมาณการการเงินเต็มรูปแบบ</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #161922;
+    --surface2: #1c1f2e;
+    --border: #2a2d3e;
+    --text: #e2e4eb;
+    --text2: #94979e;
+    --accent: #6c5ce7;
+    --accent2: #a29bfe;
+    --green: #00b894;
+    --green2: #55efc4;
+    --red: #ff6b6b;
+    --orange: #fdcb6e;
+    --blue: #74b9ff;
+    --pink: #fd79a8;
+    --radius: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Segoe UI', 'Noto Sans Thai', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(135deg, #1a1040 0%, #0f1117 50%, #0a1628 100%);
+    padding: 80px 0 60px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(108,92,231,.15);
+    border: 1px solid rgba(108,92,231,.3);
+    color: var(--accent2);
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 700;
+    background: linear-gradient(135deg, #a29bfe, #6c5ce7, #74b9ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+  }
+  .hero .subtitle {
+    color: var(--text2);
+    font-size: 16px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  /* KPI Strip */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    padding: 40px 0;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+  }
+  .kpi-card .kpi-value {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .kpi-card .kpi-label {
+    font-size: 12px;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .kpi-green .kpi-value { color: var(--green); }
+  .kpi-accent .kpi-value { color: var(--accent2); }
+  .kpi-blue .kpi-value { color: var(--blue); }
+  .kpi-orange .kpi-value { color: var(--orange); }
+  .kpi-pink .kpi-value { color: var(--pink); }
+
+  /* Nav */
+  .sticky-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(15,17,23,.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 0;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .sticky-nav a {
+    color: var(--text2);
+    text-decoration: none;
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    transition: all .2s;
+    display: inline-block;
+  }
+  .sticky-nav a:hover { color: var(--accent2); background: rgba(108,92,231,.1); }
+
+  /* Sections */
+  section { padding: 60px 0; border-bottom: 1px solid var(--border); }
+  section h2 {
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  section h2 .icon {
+    width: 36px; height: 36px;
+    background: rgba(108,92,231,.15);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+  section h3 {
+    font-size: 18px;
+    color: var(--accent2);
+    margin: 28px 0 14px;
+    padding-left: 12px;
+    border-left: 3px solid var(--accent);
+  }
+  .section-desc {
+    color: var(--text2);
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+
+  /* Tables */
+  .table-wrap {
+    overflow-x: auto;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  thead { background: var(--surface2); }
+  th {
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--text2);
+    white-space: nowrap;
+  }
+  td {
+    padding: 11px 14px;
+    border-top: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody tr:hover { background: rgba(108,92,231,.04); }
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+  .text-green { color: var(--green); }
+  .text-red { color: var(--red); }
+  .text-accent { color: var(--accent2); }
+  .text-orange { color: var(--orange); }
+  .text-blue { color: var(--blue); }
+  .fw-700 { font-weight: 700; }
+
+  /* Cards Grid */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    transition: transform .2s, border-color .2s;
+  }
+  .card:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .card .card-title {
+    font-size: 13px;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 8px;
+  }
+  .card .card-value {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .card .card-note {
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  /* Pricing Tiers */
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .pricing-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 20px;
+    text-align: center;
+    position: relative;
+    transition: transform .2s;
+  }
+  .pricing-card:hover { transform: translateY(-3px); }
+  .pricing-card.featured {
+    border-color: var(--accent);
+    background: linear-gradient(180deg, rgba(108,92,231,.12) 0%, var(--surface) 100%);
+  }
+  .pricing-card .tier-name {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .pricing-card .tier-price {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 12px 0 4px;
+  }
+  .pricing-card .tier-price span { font-size: 14px; font-weight: 400; color: var(--text2); }
+  .pricing-card .tier-usd { font-size: 13px; color: var(--text2); margin-bottom: 16px; }
+  .pricing-card ul {
+    list-style: none;
+    text-align: left;
+    font-size: 13px;
+    color: var(--text2);
+  }
+  .pricing-card ul li {
+    padding: 5px 0;
+    border-top: 1px solid var(--border);
+  }
+  .pricing-card ul li::before { content: "✓ "; color: var(--green); font-weight: 700; }
+  .pricing-card .save-badge {
+    display: inline-block;
+    background: rgba(0,184,148,.15);
+    color: var(--green);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 12px;
+    margin-top: 12px;
+  }
+
+  /* Charts */
+  .chart-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 24px;
+    margin: 24px 0;
+  }
+  .chart-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .chart-box h4 {
+    font-size: 14px;
+    color: var(--text2);
+    margin-bottom: 16px;
+  }
+
+  /* Callout */
+  .callout {
+    background: rgba(108,92,231,.08);
+    border: 1px solid rgba(108,92,231,.2);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin: 20px 0;
+    font-size: 14px;
+  }
+  .callout-green {
+    background: rgba(0,184,148,.08);
+    border-color: rgba(0,184,148,.2);
+  }
+  .callout-red {
+    background: rgba(255,107,107,.08);
+    border-color: rgba(255,107,107,.2);
+  }
+  .callout-orange {
+    background: rgba(253,203,110,.08);
+    border-color: rgba(253,203,110,.2);
+  }
+
+  /* Funnel */
+  .funnel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin: 24px 0;
+  }
+  .funnel-bar {
+    height: 42px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 13px;
+    transition: width .6s ease;
+  }
+
+  /* Scenario cards */
+  .scenario-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .scenario-card {
+    border-radius: var(--radius);
+    padding: 24px;
+    border: 1px solid var(--border);
+  }
+  .scenario-card.bear { background: linear-gradient(180deg, rgba(255,107,107,.06), var(--surface)); border-color: rgba(255,107,107,.2); }
+  .scenario-card.base { background: linear-gradient(180deg, rgba(108,92,231,.06), var(--surface)); border-color: rgba(108,92,231,.2); }
+  .scenario-card.bull { background: linear-gradient(180deg, rgba(0,184,148,.06), var(--surface)); border-color: rgba(0,184,148,.2); }
+  .scenario-card h4 { font-size: 16px; margin-bottom: 14px; }
+
+  /* Timeline */
+  .timeline { margin: 24px 0; position: relative; padding-left: 28px; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -24px;
+    top: 24px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+  }
+  .timeline-item h4 { font-size: 15px; margin-bottom: 8px; color: var(--accent2); }
+
+  /* Comparison */
+  .vs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .vs-card {
+    border-radius: var(--radius);
+    padding: 24px;
+    border: 1px solid var(--border);
+  }
+  .vs-card.loser { opacity: .7; }
+  .vs-card.winner {
+    border-color: var(--green);
+    background: linear-gradient(180deg, rgba(0,184,148,.06), var(--surface));
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 40px 0;
+    color: var(--text2);
+    font-size: 12px;
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 6px 0;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width .6s ease;
+  }
+
+  /* Metric row */
+  .metric-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .metric-row:last-child { border-bottom: none; }
+
+  /* Catalog grid */
+  .catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 10px;
+    margin: 16px 0;
+  }
+  .catalog-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .catalog-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: rgba(108,92,231,.15);
+    color: var(--accent2);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 768px) {
+    .chart-row { grid-template-columns: 1fr; }
+    .vs-grid { grid-template-columns: 1fr; }
+    .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+    .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+    section h2 { font-size: 22px; }
+  }
+  @media (max-width: 480px) {
+    .pricing-grid { grid-template-columns: 1fr; }
+    .kpi-strip { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="container">
+    <div class="hero-badge">B2C Annual Course Model + AI Tutor</div>
+    <h1>TCAS Navigator</h1>
+    <p class="subtitle">ประมาณการการเงินเต็มรูปแบบ — ซื้อคอร์สรายปี + AI อาจารย์นิว ฟรีในทุกแพ็กเกจ</p>
+  </div>
+</div>
+
+<!-- KPI STRIP -->
+<div class="container">
+  <div class="kpi-strip">
+    <div class="kpi-card kpi-green"><div class="kpi-value">+$1.30M</div><div class="kpi-label">NPV (5 ปี)</div></div>
+    <div class="kpi-card kpi-accent"><div class="kpi-value">165%</div><div class="kpi-label">IRR</div></div>
+    <div class="kpi-card kpi-blue"><div class="kpi-value">1.9 ปี</div><div class="kpi-label">Payback Period</div></div>
+    <div class="kpi-card kpi-orange"><div class="kpi-value">4,041%</div><div class="kpi-label">5-Year ROI</div></div>
+    <div class="kpi-card kpi-green"><div class="kpi-value">83-87%</div><div class="kpi-label">Gross Margin</div></div>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="sticky-nav">
+  <div class="container">
+    <a href="#model">โมเดลธุรกิจ</a>
+    <a href="#pricing">ราคา</a>
+    <a href="#tutor-cost">ต้นทุนติวเตอร์</a>
+    <a href="#catalog">คอร์ส 30 วิชา</a>
+    <a href="#market">ตลาด TAM/SAM/SOM</a>
+    <a href="#revenue">รายได้</a>
+    <a href="#costs">ต้นทุน</a>
+    <a href="#pnl">P&L</a>
+    <a href="#metrics">Financial Metrics</a>
+    <a href="#sensitivity">Sensitivity</a>
+    <a href="#roadmap">แผนระยะแรก</a>
+    <a href="#comparison">Monthly vs Annual</a>
+  </div>
+</div>
+
+<!-- ========== 1. BUSINESS MODEL ========== -->
+<section id="model">
+  <div class="container">
+    <h2><span class="icon">🏢</span> โมเดลธุรกิจ</h2>
+    <p class="section-desc">นักเรียนซื้อคอร์สเรียนรายปี (1 ครั้ง/ปีการศึกษา) — จ่ายติวเตอร์ครั้งเดียว (content buyout) → แพลตฟอร์มเป็นเจ้าของคอนเทนต์ตลอดกาล</p>
+
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-title">ช่องทางรายได้หลัก</div>
+        <div class="card-value text-accent">4 แพ็กเกจ</div>
+        <div class="card-note">Free → Single → Pack → Full Access</div>
+      </div>
+      <div class="card">
+        <div class="card-title">AI อาจารย์นิว</div>
+        <div class="card-value text-green">ฟรีทุกแพ็กเกจ</div>
+        <div class="card-note">ตอบคำถาม real-time + กราฟ Desmos</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Content Model</div>
+        <div class="card-value text-blue">Buyout</div>
+        <div class="card-note">จ่ายติวเตอร์ครั้งเดียว → สินทรัพย์ถาวร</div>
+      </div>
+      <div class="card">
+        <div class="card-title">จุดขายหลัก</div>
+        <div class="card-value text-orange">ถูก 48-64%</div>
+        <div class="card-note">+ มี AI + มีกราฟ interactive</div>
+      </div>
+    </div>
+
+    <h3>ข้อมูลอ้างอิงหลัก</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ข้อมูล</th><th class="text-right">ตัวเลข</th><th>แหล่งอ้างอิง</th></tr></thead>
+        <tbody>
+          <tr><td>นักเรียน ม.4-6 ทั่วประเทศ (ปี 2565)</td><td class="text-right fw-700">2,030,286 คน</td><td>NSO Statistical Yearbook 2024</td></tr>
+          <tr><td>นักเรียน ม.6 (Grade 12)</td><td class="text-right fw-700">670,432 คน</td><td>NSO Statistical Yearbook 2024</td></tr>
+          <tr><td>สมัคร TCAS67 รวมทุกรอบ</td><td class="text-right fw-700">304,696 คน</td><td>AdmissionPremium</td></tr>
+          <tr><td>เด็ก ม.6 ปีนี้สมัคร TGAT/TPAT</td><td class="text-right fw-700">240,882 คน</td><td>AdmissionPremium TCAS67</td></tr>
+          <tr><td>สมัคร A-Level</td><td class="text-right fw-700">187,342 คน</td><td>EduZones</td></tr>
+          <tr><td>เด็กซิ่วสมัคร TGAT/TPAT</td><td class="text-right fw-700">48,533 คน</td><td>AdmissionPremium TCAS67</td></tr>
+          <tr><td>Thailand EdTech Market (2025)</td><td class="text-right fw-700">$1,757M</td><td>IMARC Group</td></tr>
+          <tr><td>Thailand AI Tutors Market (2025)</td><td class="text-right fw-700">$320M</td><td>Mobility Foresights</td></tr>
+          <tr><td>Nemotron 49B v1.5 Input/Output</td><td class="text-right fw-700">$0.10/$0.40 per 1M tokens</td><td>PricePerToken</td></tr>
+          <tr><td>ค่าติวเตอร์มืออาชีพ (TCAS/A-Level)</td><td class="text-right fw-700">฿800-1,500/ชม.</td><td>BestKru</td></tr>
+          <tr><td>คอร์ส A-Level สถาบันใหญ่</td><td class="text-right fw-700">฿2,490-9,990/คอร์ส/ปี</td><td>Panya Society</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 2. PRICING ========== -->
+<section id="pricing">
+  <div class="container">
+    <h2><span class="icon">💎</span> ราคาแพ็กเกจ (รายปี)</h2>
+    <p class="section-desc">จ่ายครั้งเดียวต่อปีการศึกษา — ถูกกว่าสถาบันใหญ่ 48-64%</p>
+
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="tier-name">Free</div>
+        <div class="tier-price">฿0</div>
+        <div class="tier-usd">$0</div>
+        <ul>
+          <li>AI chat 5 คำถาม/วัน</li>
+          <li>กราฟพื้นฐาน</li>
+          <li>1 บทเรียนตัวอย่าง</li>
+        </ul>
+      </div>
+      <div class="pricing-card">
+        <div class="tier-name">Single Course</div>
+        <div class="tier-price">฿1,290<span>/ปี</span></div>
+        <div class="tier-usd">$36.86</div>
+        <ul>
+          <li>1 คอร์สเต็ม</li>
+          <li>AI ไม่จำกัด</li>
+          <li>กราฟ interactive</li>
+        </ul>
+        <div class="save-badge">ถูกกว่า Panya 48%</div>
+      </div>
+      <div class="pricing-card featured">
+        <div class="tier-name">Science Pack</div>
+        <div class="tier-price">฿2,990<span>/ปี</span></div>
+        <div class="tier-usd">$85.43</div>
+        <ul>
+          <li>ฟิสิกส์+เคมี+คณิต</li>
+          <li>AI ไม่จำกัด</li>
+          <li>Learning Path</li>
+        </ul>
+        <div class="save-badge">ถูกกว่า Panya 57%</div>
+      </div>
+      <div class="pricing-card">
+        <div class="tier-name">Arts Pack</div>
+        <div class="tier-price">฿1,990<span>/ปี</span></div>
+        <div class="tier-usd">$56.86</div>
+        <ul>
+          <li>ไทย+สังคม+อังกฤษ</li>
+          <li>AI ไม่จำกัด</li>
+          <li>Learning Path</li>
+        </ul>
+        <div class="save-badge">ถูกกว่า Panya 64%</div>
+      </div>
+      <div class="pricing-card featured">
+        <div class="tier-name" style="color:var(--accent2)">Full Access</div>
+        <div class="tier-price" style="color:var(--accent2)">฿4,990<span>/ปี</span></div>
+        <div class="tier-usd">$142.57</div>
+        <ul>
+          <li>ทุกคอร์ส</li>
+          <li>AI ไม่จำกัด</li>
+          <li>Learning Path + Analytics</li>
+        </ul>
+        <div class="save-badge">ถูกกว่า Panya 50%</div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>จุดเด่น:</strong> AI อาจารย์นิว ตอบคำถาม real-time + กราฟ Desmos interactive — สถาบันอื่นไม่มี<br>
+      <strong>จุดขายหลัก:</strong> ถูกกว่า 48-64% + มี AI + มีกราฟ interactive
+    </div>
+  </div>
+</section>
+
+<!-- ========== 3. TUTOR COST ========== -->
+<section id="tutor-cost">
+  <div class="container">
+    <h2><span class="icon">🎓</span> ต้นทุนติวเตอร์ (Content Buyout)</h2>
+    <p class="section-desc">จ่ายครั้งเดียว → แพลตฟอร์มเป็นเจ้าของคอนเทนต์ตลอดกาล</p>
+
+    <h3>อัตราค่าจ้างติวเตอร์</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ระดับติวเตอร์</th><th class="text-right">อัตรา (฿/ชม.)</th><th>เหมาะกับ</th></tr></thead>
+        <tbody>
+          <tr><td>ครูในระบบ / มืออาชีพ TCAS</td><td class="text-right fw-700">800–1,500</td><td>คอร์สหลัก A-Level (คุณภาพสูง)</td></tr>
+          <tr><td>ติวเตอร์จบใหม่ / Part-time</td><td class="text-right fw-700">500–700</td><td>คอร์สเสริม TGAT/TPAT</td></tr>
+          <tr><td>นักศึกษาเก่ง</td><td class="text-right fw-700">250–400</td><td>คอร์สตัวอย่าง / เนื้อหาเบื้องต้น</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>ต้นทุนต่อคอร์ส</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>รายการ</th><th class="text-right">ระดับ A</th><th class="text-right">ระดับ B</th><th class="text-right">ระดับ C</th></tr></thead>
+        <tbody>
+          <tr><td>ติวเตอร์อัตรา</td><td class="text-right">฿1,200/ชม.</td><td class="text-right">฿600/ชม.</td><td class="text-right">฿350/ชม.</td></tr>
+          <tr><td>ชั่วโมงวิดีโอ/คอร์ส</td><td class="text-right">20 ชม.</td><td class="text-right">15 ชม.</td><td class="text-right">10 ชม.</td></tr>
+          <tr><td>ค่าติวเตอร์/คอร์ส</td><td class="text-right fw-700">฿24,000</td><td class="text-right fw-700">฿9,000</td><td class="text-right fw-700">฿3,500</td></tr>
+          <tr><td>ค่าอุปกรณ์ถ่าย (แบ่ง 30 คอร์ส)</td><td class="text-right">฿500</td><td class="text-right">฿500</td><td class="text-right">฿500</td></tr>
+          <tr><td>ค่าตัดต่อ</td><td class="text-right">฿2,000</td><td class="text-right">฿1,000</td><td class="text-right">฿500</td></tr>
+          <tr style="background:rgba(108,92,231,.06)"><td class="fw-700">รวม/คอร์ส</td><td class="text-right fw-700 text-accent">฿26,500</td><td class="text-right fw-700 text-accent">฿10,500</td><td class="text-right fw-700 text-accent">฿4,500</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>แผนสร้างคอร์ส 3 ปี</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ปี</th><th class="text-right">คอร์ส A</th><th class="text-right">คอร์ส B</th><th class="text-right">คอร์ส C</th><th class="text-right">รวม</th><th class="text-right">ต้นทุน (฿)</th><th class="text-right">ต้นทุน (USD)</th></tr></thead>
+        <tbody>
+          <tr><td>ปี 1</td><td class="text-right">5</td><td class="text-right">3</td><td class="text-right">2</td><td class="text-right fw-700">10</td><td class="text-right fw-700">183,500</td><td class="text-right">$5,243</td></tr>
+          <tr><td>ปี 2</td><td class="text-right">4</td><td class="text-right">3</td><td class="text-right">3</td><td class="text-right fw-700">10</td><td class="text-right fw-700">153,500</td><td class="text-right">$4,386</td></tr>
+          <tr><td>ปี 3</td><td class="text-right">3</td><td class="text-right">4</td><td class="text-right">3</td><td class="text-right fw-700">10</td><td class="text-right fw-700">129,500</td><td class="text-right">$3,700</td></tr>
+          <tr style="background:rgba(108,92,231,.06)"><td class="fw-700">รวม 3 ปี</td><td class="text-right fw-700">12</td><td class="text-right fw-700">10</td><td class="text-right fw-700">8</td><td class="text-right fw-700 text-accent">30</td><td class="text-right fw-700 text-accent">฿466,500</td><td class="text-right fw-700 text-accent">$13,329</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-green">
+      คอร์สที่สร้างแล้ว = สินทรัพย์ถาวร (ไม่ต้องจ่ายซ้ำ) → ปี 4-5 ต้นทุนติวเตอร์ใหม่เฉพาะคอร์สอัปเดต (~$1,429/ปี)
+    </div>
+  </div>
+</section>
+
+<!-- ========== 4. CATALOG ========== -->
+<section id="catalog">
+  <div class="container">
+    <h2><span class="icon">📚</span> คอร์ส Catalog (30 คอร์ส)</h2>
+
+    <h3>A-Level วิชาสามัญ (14 คอร์ส)</h3>
+    <div class="catalog-grid">
+      <div class="catalog-item"><span class="catalog-num">1</span>คณิตศาสตร์ 1 — ม.4 เซต+จำนวนจริง</div>
+      <div class="catalog-item"><span class="catalog-num">2</span>คณิตศาสตร์ 2 — ม.4 ฟังก์ชัน+ตรีโกณ</div>
+      <div class="catalog-item"><span class="catalog-num">3</span>คณิตศาสตร์ 3 — ม.5 เอกซ์โพ+ลอการิทึม</div>
+      <div class="catalog-item"><span class="catalog-num">4</span>คณิตศาสตร์ 4 — ม.5 เมทริกซ์+เวกเตอร์</div>
+      <div class="catalog-item"><span class="catalog-num">5</span>คณิตศาสตร์ 5 — ม.6 อนุพันธ์+อินทิกรัล</div>
+      <div class="catalog-item"><span class="catalog-num">6</span>ฟิสิกส์ 1 — กลศาสตร์</div>
+      <div class="catalog-item"><span class="catalog-num">7</span>ฟิสิกส์ 2 — คลื่น+ไฟฟ้า</div>
+      <div class="catalog-item"><span class="catalog-num">8</span>เคมี 1 — สมดุล+ปฏิกิริยา</div>
+      <div class="catalog-item"><span class="catalog-num">9</span>เคมี 2 — สารละลาย+อิเล็กโทรเคม</div>
+      <div class="catalog-item"><span class="catalog-num">10</span>ชีววิทยา — พันธุกรรม+วิวัฒนาการ</div>
+      <div class="catalog-item"><span class="catalog-num">11</span>ภาษาไทย — อ่าน+เขียน+วิเคราะห์</div>
+      <div class="catalog-item"><span class="catalog-num">12</span>สังคมศึกษา — ประวัติ+เศรษฐศาสตร์</div>
+      <div class="catalog-item"><span class="catalog-num">13</span>ภาษาอังกฤษ — Reading+Writing</div>
+      <div class="catalog-item"><span class="catalog-num">14</span>คณิตศาสตร์ 2 / เพิ่มเติม</div>
+    </div>
+
+    <h3>TGAT + TPAT (8 คอร์ส)</h3>
+    <div class="catalog-grid">
+      <div class="catalog-item"><span class="catalog-num">15</span>TGAT Part 1 — สื่อสารภาษาอังกฤษ</div>
+      <div class="catalog-item"><span class="catalog-num">16</span>TGAT Part 2 — คิดวิเคราะห์+แก้ปัญหา</div>
+      <div class="catalog-item"><span class="catalog-num">17</span>TGAT Part 3 — สมรรถนะการทำงาน</div>
+      <div class="catalog-item"><span class="catalog-num">18</span>TPAT1 — แพทย์</div>
+      <div class="catalog-item"><span class="catalog-num">19</span>TPAT2 — พยาบาล</div>
+      <div class="catalog-item"><span class="catalog-num">20</span>TPAT3 — วิศวกรรม</div>
+      <div class="catalog-item"><span class="catalog-num">21</span>TPAT4 — สถาปัตย์</div>
+      <div class="catalog-item"><span class="catalog-num">22</span>TPAT5 — ศึกษาศาสตร์</div>
+    </div>
+
+    <h3>คอร์สสั้น/Review (8 คอร์ส)</h3>
+    <div class="catalog-grid">
+      <div class="catalog-item"><span class="catalog-num">23</span>ทบทวนเร่งด่วน — คณิต</div>
+      <div class="catalog-item"><span class="catalog-num">24</span>ทบทวนเร่งด่วน — ฟิสิกส์</div>
+      <div class="catalog-item"><span class="catalog-num">25</span>ทบทวนเร่งด่วน — เคมี</div>
+      <div class="catalog-item"><span class="catalog-num">26</span>ทบทวนเร่งด่วน — ชีวะ</div>
+      <div class="catalog-item"><span class="catalog-num">27</span>ทบทวนเร่งด่วน — ไทย</div>
+      <div class="catalog-item"><span class="catalog-num">28</span>ทบทวนเร่งด่วน — สังคม</div>
+      <div class="catalog-item"><span class="catalog-num">29</span>ทบทวนเร่งด่วน — อังกฤษ</div>
+      <div class="catalog-item"><span class="catalog-num">30</span>ทบทวนเร่งด่วน — TGAT/TPAT</div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 5. TAM/SAM/SOM ========== -->
+<section id="market">
+  <div class="container">
+    <h2><span class="icon">🎯</span> ตลาด TAM / SAM / SOM</h2>
+
+    <h3>TAM Population</h3>
+    <div class="funnel">
+      <div class="funnel-bar" style="width:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))">
+        TAM: 740,882 คน — ฿2,458M ($70.3M)
+      </div>
+      <div class="funnel-bar" style="width:42%;background:linear-gradient(90deg,var(--blue),#0984e3)">
+        SAM: 73,938 คน — ฿221M ($6.3M)
+      </div>
+      <div class="funnel-bar" style="width:12%;background:linear-gradient(90deg,var(--green),var(--green2))">
+        SOM ปี 3: 5,915 คน — $500K
+      </div>
+    </div>
+
+    <h3>TAM Breakdown</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>กลุ่ม</th><th class="text-right">จำนวน</th><th class="text-right">ARPU/ปี (฿)</th><th class="text-right">TAM (฿)</th><th class="text-right">TAM (USD)</th></tr></thead>
+        <tbody>
+          <tr><td>ม.6 สอบ TCAS</td><td class="text-right">240,882</td><td class="text-right">4,990</td><td class="text-right">1,202M</td><td class="text-right">$34.4M</td></tr>
+          <tr><td>ม.5 เตรียมล่วงหน้า</td><td class="text-right">250,000</td><td class="text-right">2,990</td><td class="text-right">748M</td><td class="text-right">$21.4M</td></tr>
+          <tr><td>ม.4 เริ่มสนใจ</td><td class="text-right">200,000</td><td class="text-right">1,290</td><td class="text-right">258M</td><td class="text-right">$7.4M</td></tr>
+          <tr><td>เด็กซิ่ว</td><td class="text-right">50,000</td><td class="text-right">4,990</td><td class="text-right">250M</td><td class="text-right">$7.1M</td></tr>
+          <tr style="background:rgba(108,92,231,.06)"><td class="fw-700">TAM รวม</td><td class="text-right fw-700">740,882</td><td class="text-right">—</td><td class="text-right fw-700 text-accent">฿2,458M</td><td class="text-right fw-700 text-accent">$70.3M</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>SOM Projection</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ปี</th><th class="text-right">ส่วนแบ่ง SAM</th><th class="text-right">Paid Users</th><th class="text-right">SOM Revenue (฿)</th><th class="text-right">SOM Revenue (USD)</th></tr></thead>
+        <tbody>
+          <tr><td>ปี 1</td><td class="text-right">0.5%</td><td class="text-right">~370</td><td class="text-right">1.0M</td><td class="text-right">$28.5K</td></tr>
+          <tr><td>ปี 2</td><td class="text-right">3%</td><td class="text-right">~2,218</td><td class="text-right">6.4M</td><td class="text-right">$184K</td></tr>
+          <tr><td>ปี 3</td><td class="text-right">8%</td><td class="text-right">~5,915</td><td class="text-right">17.5M</td><td class="text-right">$500K</td></tr>
+          <tr><td>ปี 4</td><td class="text-right">15%</td><td class="text-right">~11,091</td><td class="text-right">35.4M</td><td class="text-right">$1.01M</td></tr>
+          <tr><td>ปี 5</td><td class="text-right">22%</td><td class="text-right">~16,266</td><td class="text-right">52.3M</td><td class="text-right">$1.50M</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 6. REVENUE ========== -->
+<section id="revenue">
+  <div class="container">
+    <h2><span class="icon">📈</span> โมเดลรายได้</h2>
+
+    <h3>Conversion Funnel (Annual)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ปี</th><th class="text-right">MAU</th><th class="text-right">→ Single</th><th class="text-right">→ Pack</th><th class="text-right">→ Full</th><th class="text-right">รวม Paid</th></tr></thead>
+        <tbody>
+          <tr><td>ปี 1</td><td class="text-right">15,000</td><td class="text-right">225 (1.5%)</td><td class="text-right">150 (1.0%)</td><td class="text-right">45 (0.3%)</td><td class="text-right fw-700">420</td></tr>
+          <tr><td>ปี 2</td><td class="text-right">50,000</td><td class="text-right">1,250 (2.5%)</td><td class="text-right">1,000 (2.0%)</td><td class="text-right">500 (1.0%)</td><td class="text-right fw-700">2,750</td></tr>
+          <tr><td>ปี 3</td><td class="text-right">120,000</td><td class="text-right">3,600 (3.0%)</td><td class="text-right">3,000 (2.5%)</td><td class="text-right">1,440 (1.2%)</td><td class="text-right fw-700">8,040</td></tr>
+          <tr><td>ปี 4</td><td class="text-right">200,000</td><td class="text-right">6,000 (3.0%)</td><td class="text-right">5,000 (2.5%)</td><td class="text-right">2,400 (1.2%)</td><td class="text-right fw-700">13,400</td></tr>
+          <tr><td>ปี 5</td><td class="text-right">300,000</td><td class="text-right">9,000 (3.0%)</td><td class="text-right">7,500 (2.5%)</td><td class="text-right">3,600 (1.2%)</td><td class="text-right fw-700">20,100</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Revenue Projection</h3>
+    <div class="chart-row">
+      <div class="chart-box">
+        <h4>Revenue by Tier (5 ปี)</h4>
+        <canvas id="revenueChart" height="260"></canvas>
+      </div>
+      <div class="chart-box">
+        <h4>Revenue Growth</h4>
+        <canvas id="revenueLineChart" height="260"></canvas>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ปี</th><th class="text-right">Single (฿1,290)</th><th class="text-right">Pack (฿2,990)</th><th class="text-right">Full (฿4,990)</th><th class="text-right">รวม (฿)</th><th class="text-right">รวม (USD)</th></tr></thead>
+        <tbody>
+          <tr><td>ปี 1</td><td class="text-right">290K</td><td class="text-right">449K</td><td class="text-right">225K</td><td class="text-right fw-700">฿963K</td><td class="text-right fw-700">$27.5K</td></tr>
+          <tr><td>ปี 2</td><td class="text-right">1.61M</td><td class="text-right">2.99M</td><td class="text-right">2.50M</td><td class="text-right fw-700">฿7.10M</td><td class="text-right fw-700">$202.8K</td></tr>
+          <tr><td>ปี 3</td><td class="text-right">4.64M</td><td class="text-right">8.97M</td><td class="text-right">7.19M</td><td class="text-right fw-700">฿20.80M</td><td class="text-right fw-700">$594.3K</td></tr>
+          <tr><td>ปี 4</td><td class="text-right">7.74M</td><td class="text-right">14.95M</td><td class="text-right">11.98M</td><td class="text-right fw-700">฿34.67M</td><td class="text-right fw-700">$990.4K</td></tr>
+          <tr><td>ปี 5</td><td class="text-right">11.61M</td><td class="text-right">22.43M</td><td class="text-right">17.96M</td><td class="text-right fw-700 text-green">฿52.00M</td><td class="text-right fw-700 text-green">$1,485K</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      Weighted ARPU: ฿2,291/ปี (ปี 1) → ฿2,587/ปี (ปี 5) — เพิ่มขึ้นเมื่อ brand เชื่อมั่นได้
+    </div>
+  </div>
+</section>
+
+<!-- ========== 7. COSTS ========== -->
+<section id="costs">
+  <div class="container">
+    <h2><span class="icon">💰</span> ต้นทุนเต็มรูปแบบ (5 ปี)</h2>
+
+    <h3>ต้นทุน Variable (API + Infra + CDN)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>รายการ</th><th class="text-right">ปี 1</th><th class="text-right">ปี 2</th><th class="text-right">ปี 3</th><th class="text-right">ปี 4</th><th class="text-right">ปี 5</th></tr></thead>
+        <tbody>
+          <tr><td>NVIDIA 49B API</td><td class="text-right">$3,969</td><td class="text-right">$17,640</td><td class="text-right">$47,628</td><td class="text-right">$79,380</td><td class="text-right">$119,070</td></tr>
+          <tr><td>NVIDIA Nano</td><td class="text-right">$24</td><td class="text-right">$108</td><td class="text-right">$292</td><td class="text-right">$486</td><td class="text-right">$729</td></tr>
+          <tr><td>Supabase</td><td class="text-right">$300</td><td class="text-right">$600</td><td class="text-right">$1,500</td><td class="text-right">$3,000</td><td class="text-right">$6,000</td></tr>
+          <tr><td>Vercel</td><td class="text-right">$240</td><td class="text-right">$240</td><td class="text-right">$240</td><td class="text-right">$240</td><td class="text-right">$240</td></tr>
+          <tr><td>Redis + Qdrant</td><td class="text-right">$120</td><td class="text-right">$360</td><td class="text-right">$1,200</td><td class="text-right">$2,400</td><td class="text-right">$4,800</td></tr>
+          <tr><td>CDN / Video Hosting</td><td class="text-right">$1,800</td><td class="text-right">$6,000</td><td class="text-right">$14,400</td><td class="text-right">$24,000</td><td class="text-right">$36,000</td></tr>
+          <tr><td>Domain + SSL</td><td class="text-right">$15</td><td class="text-right">$15</td><td class="text-right">$15</td><td class="text-right">$15</td><td class="text-right">$15</td></tr>
+          <tr style="background:rgba(108,92,231,.06)"><td class="fw-700">รวม Variable</td><td class="text-right fw-700 text-accent">$6,468</td><td class="text-right fw-700 text-accent">$24,963</td><td class="text-right fw-700 text-accent">$65,275</td><td class="text-right fw-700 text-accent">$109,521</td><td class="text-right fw-700 text-accent">$166,854</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>ต้นทุน Fixed (OpEx)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>รายการ</th><th class="text-right">ปี 1</th><th class="text-right">ปี 2</th><th class="text-right">ปี 3</th><th class="text-right">ปี 4</th><th class="text-right">ปี 5</th></tr></thead>
+        <tbody>
+          <tr><td>Founders (2 คน)</td><td class="text-right">$24K</td><td class="text-right">$36K</td><td class="text-right">$48K</td><td class="text-right">$60K</td><td class="text-right">$72K</td></tr>
+          <tr><td>เพิ่มทีม (Dev+Content)</td><td class="text-right">$0</td><td class="text-right">$18K</td><td class="text-right">$36K</td><td class="text-right">$48K</td><td class="text-right">$60K</td></tr>
+          <tr><td>Marketing</td><td class="text-right">$5K</td><td class="text-right">$15K</td><td class="text-right">$40K</td><td class="text-right">$80K</td><td class="text-right">$120K</td></tr>
+          <tr><td>ค่าออกแบบคอร์ส</td><td class="text-right">$3K</td><td class="text-right">$5K</td><td class="text-right">$8K</td><td class="text-right">$8K</td><td class="text-right">$8K</td></tr>
+          <tr><td>กฎหมาย/บัญชี</td><td class="text-right">$2K</td><td class="text-right">$3K</td><td class="text-right">$5K</td><td class="text-right">$8K</td><td class="text-right">$10K</td></tr>
+          <tr><td>อื่นๆ (tools, SaaS)</td><td class="text-right">$1K</td><td class="text-right">$2K</td><td class="text-right">$3K</td><td class="text-right">$5K</td><td class="text-right">$7K</td></tr>
+          <tr style="background:rgba(108,92,231,.06)"><td class="fw-700">รวม OpEx</td><td class="text-right fw-700 text-accent">$35K</td><td class="text-right fw-700 text-accent">$79K</td><td class="text-right fw-700 text-accent">$140K</td><td class="text-right fw-700 text-accent">$209K</td><td class="text-right fw-700 text-accent">$277K</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>สรุปต้นทุนรวม</h3>
+    <div class="chart-row">
+      <div class="chart-box">
+        <h4>Cost Breakdown ปี 1-5</h4>
+        <canvas id="costChart" height="260"></canvas>
+      </div>
+      <div class="chart-box">
+        <h4>โครงสร้างต้นทุน (% ของรวม)</h4>
+        <canvas id="costPieChart" height="260"></canvas>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>รายการ</th><th class="text-right">ปี 1</th><th class="text-right">ปี 2</th><th class="text-right">ปี 3</th><th class="text-right">ปี 4</th><th class="text-right">ปี 5</th></tr></thead>
+        <tbody>
+          <tr><td>Variable (API+Infra+CDN)</td><td class="text-right">$6,468</td><td class="text-right">$24,963</td><td class="text-right">$65,275</td><td class="text-right">$109,521</td><td class="text-right">$166,854</td></tr>
+          <tr><td>ติวเตอร์ (Content)</td><td class="text-right">$5,243</td><td class="text-right">$4,386</td><td class="text-right">$3,700</td><td class="text-right">$1,429</td><td class="text-right">$1,429</td></tr>
+          <tr><td>OpEx (ทีม+การตลาด)</td><td class="text-right">$35,000</td><td class="text-right">$79,000</td><td class="text-right">$140,000</td><td class="text-right">$209,000</td><td class="text-right">$277,000</td></tr>
+          <tr style="background:rgba(255,107,107,.06)"><td class="fw-700">TOTAL COST</td><td class="text-right fw-700 text-red">$46,711</td><td class="text-right fw-700 text-red">$108,349</td><td class="text-right fw-700 text-red">$208,975</td><td class="text-right fw-700 text-red">$319,950</td><td class="text-right fw-700 text-red">$445,283</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 8. P&L ========== -->
+<section id="pnl">
+  <div class="container">
+    <h2><span class="icon">📊</span> Profit & Loss (5 ปี)</h2>
+
+    <div class="chart-row">
+      <div class="chart-box">
+        <h4>Revenue vs Cost vs Profit</h4>
+        <canvas id="pnlChart" height="280"></canvas>
+      </div>
+      <div class="chart-box">
+        <h4>Net Profit Margin</h4>
+        <canvas id="marginChart" height="280"></canvas>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ปี</th><th class="text-right">Revenue</th><th class="text-right">Total Cost</th><th class="text-right">Net Profit</th><th class="text-right">Net Profit (฿)</th><th class="text-right">Margin</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>ปี 1</td><td class="text-right">$27.5K</td><td class="text-right">$46.7K</td>
+            <td class="text-right text-red fw-700">-$19.2K</td><td class="text-right text-red">-฿677K</td><td class="text-right text-red">-70%</td>
+          </tr>
+          <tr>
+            <td>ปี 2</td><td class="text-right">$202.8K</td><td class="text-right">$108.3K</td>
+            <td class="text-right text-green fw-700">+$94.5K</td><td class="text-right text-green">+฿3.30M</td><td class="text-right text-green">+47%</td>
+          </tr>
+          <tr>
+            <td>ปี 3</td><td class="text-right">$594.3K</td><td class="text-right">$209.0K</td>
+            <td class="text-right text-green fw-700">+$385.3K</td><td class="text-right text-green">+฿13.49M</td><td class="text-right text-green">+65%</td>
+          </tr>
+          <tr>
+            <td>ปี 4</td><td class="text-right">$990.4K</td><td class="text-right">$320.0K</td>
+            <td class="text-right text-green fw-700">+$670.5K</td><td class="text-right text-green">+฿23.47M</td><td class="text-right text-green">+68%</td>
+          </tr>
+          <tr style="background:rgba(0,184,148,.06)">
+            <td>ปี 5</td><td class="text-right">$1,485K</td><td class="text-right">$445.3K</td>
+            <td class="text-right text-green fw-700">+$1,039.7K</td><td class="text-right text-green fw-700">+฿36.39M</td><td class="text-right text-green fw-700">+70%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-green">
+      <strong>กำไรตั้งแต่ปี 2!</strong> เพราะ Annual pricing ให้ ARPU สูงกว่า monthly subscription
+    </div>
+  </div>
+</section>
+
+<!-- ========== 9. FINANCIAL METRICS ========== -->
+<section id="metrics">
+  <div class="container">
+    <h2><span class="icon">🔬</span> Financial Metrics ครบชุด</h2>
+
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-title">NPV (12% discount)</div>
+        <div class="card-value text-green">+$1,299K</div>
+        <div class="card-note">ลงทุนคุ้มค่ามาก</div>
+      </div>
+      <div class="card">
+        <div class="card-title">IRR</div>
+        <div class="card-value text-accent">≈165%</div>
+        <div class="card-note">สูงมาก ยืนยันคุ้มค่า</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Payback Period</div>
+        <div class="card-value text-blue">1.9 ปี</div>
+        <div class="card-note">ไวมากสำหรับ startup</div>
+      </div>
+      <div class="card">
+        <div class="card-title">5-Year ROI</div>
+        <div class="card-value text-orange">4,041%</div>
+        <div class="card-note">Annualized 36.6%/ปี</div>
+      </div>
+    </div>
+
+    <h3>Cash Flow Projection</h3>
+    <div class="chart-row">
+      <div class="chart-box" style="grid-column:1/-1">
+        <h4>Cumulative Cash Flow</h4>
+        <canvas id="cashflowChart" height="240"></canvas>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ปี</th><th class="text-right">Revenue</th><th class="text-right">Cost</th><th class="text-right">Cash Flow</th><th class="text-right">Cumulative CF</th></tr></thead>
+        <tbody>
+          <tr><td>0 (Seed)</td><td class="text-right">$0</td><td class="text-right">-$50,000</td><td class="text-right text-red">-$50,000</td><td class="text-right text-red">-$50,000</td></tr>
+          <tr><td>1</td><td class="text-right">$27,523</td><td class="text-right">$46,711</td><td class="text-right text-red">-$19,188</td><td class="text-right text-red">-$69,188</td></tr>
+          <tr><td>2</td><td class="text-right">$202,800</td><td class="text-right">$108,349</td><td class="text-right text-green">+$94,451</td><td class="text-right text-green">+$25,263</td></tr>
+          <tr><td>3</td><td class="text-right">$594,286</td><td class="text-right">$208,975</td><td class="text-right text-green">+$385,311</td><td class="text-right text-green">+$410,574</td></tr>
+          <tr><td>4</td><td class="text-right">$990,429</td><td class="text-right">$319,950</td><td class="text-right text-green">+$670,479</td><td class="text-right text-green">+$1,081,053</td></tr>
+          <tr style="background:rgba(0,184,148,.06)"><td>5</td><td class="text-right">$1,485,000</td><td class="text-right">$445,283</td><td class="text-right text-green fw-700">+$1,039,717</td><td class="text-right text-green fw-700">+$2,120,770</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>LTV / CAC Analysis</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ปี</th><th class="text-right">ARPU (USD)</th><th class="text-right">CAC (USD)</th><th class="text-right">Avg Retention</th><th class="text-right">LTV (3yr)</th><th class="text-right">LTV/CAC</th></tr></thead>
+        <tbody>
+          <tr><td>ปี 1</td><td class="text-right">$65.5</td><td class="text-right">$3.33</td><td class="text-right">1.5 ปี</td><td class="text-right">$196.5</td><td class="text-right fw-700 text-green">59×</td></tr>
+          <tr><td>ปี 2</td><td class="text-right">$73.7</td><td class="text-right">$3.00</td><td class="text-right">1.8 ปี</td><td class="text-right">$221.1</td><td class="text-right fw-700 text-green">74×</td></tr>
+          <tr><td>ปี 3</td><td class="text-right">$73.9</td><td class="text-right">$3.33</td><td class="text-right">2.0 ปี</td><td class="text-right">$221.7</td><td class="text-right fw-700 text-green">67×</td></tr>
+          <tr><td>ปี 4</td><td class="text-right">$73.9</td><td class="text-right">$4.15</td><td class="text-right">2.0 ปี</td><td class="text-right">$221.7</td><td class="text-right fw-700 text-green">53×</td></tr>
+          <tr><td>ปี 5</td><td class="text-right">$73.9</td><td class="text-right">$4.67</td><td class="text-right">2.2 ปี</td><td class="text-right">$243.9</td><td class="text-right fw-700 text-green">52×</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout callout-green">LTV/CAC สูงมาก (52-74×) — Benchmark ที่ดี: LTV/CAC > 3× → เราเกินเกณฑ์มาก</div>
+
+    <h3>Break-Even Analysis</h3>
+    <div class="cards-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+      <div class="card">
+        <div class="card-title">Break-even</div>
+        <div class="card-value text-green">1,139</div>
+        <div class="card-note">paid users ที่ปี 2</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Contribution Margin</div>
+        <div class="card-value text-accent">$73.2</div>
+        <div class="card-note">ต่อ user/ปี</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Fixed Costs (ปี 2)</div>
+        <div class="card-value text-orange">$83,386</div>
+        <div class="card-note">OpEx + Tutor</div>
+      </div>
+    </div>
+
+    <h3>Gross Margin</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ปี</th><th class="text-right">Revenue</th><th class="text-right">COGS</th><th class="text-right">Gross Profit</th><th class="text-right">Gross Margin</th></tr></thead>
+        <tbody>
+          <tr><td>ปี 1</td><td class="text-right">$27.5K</td><td class="text-right">$11.7K</td><td class="text-right">$15.8K</td><td class="text-right text-orange">57%</td></tr>
+          <tr><td>ปี 2</td><td class="text-right">$202.8K</td><td class="text-right">$35.3K</td><td class="text-right">$167.5K</td><td class="text-right text-green">83%</td></tr>
+          <tr><td>ปี 3</td><td class="text-right">$594.3K</td><td class="text-right">$85.6K</td><td class="text-right">$508.7K</td><td class="text-right text-green">86%</td></tr>
+          <tr><td>ปี 4</td><td class="text-right">$990.4K</td><td class="text-right">$134.9K</td><td class="text-right">$855.5K</td><td class="text-right text-green">86%</td></tr>
+          <tr><td>ปี 5</td><td class="text-right">$1,485K</td><td class="text-right">$189.1K</td><td class="text-right">$1,295.9K</td><td class="text-right text-green fw-700">87%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout callout-green">Gross Margin 83-87% หลังปี 1 → Software-like margins ดีมาก</div>
+
+    <h3>FV/PV Summary</h3>
+    <div class="cards-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="card">
+        <div class="card-title">FV of Seed at Year 5</div>
+        <div class="card-value text-blue">$88K</div>
+        <div class="card-note">$50K × (1.12)^5</div>
+      </div>
+      <div class="card">
+        <div class="card-title">FV of All Cash Flows</div>
+        <div class="card-value text-accent">$2,380K</div>
+        <div class="card-note">at Year 5</div>
+      </div>
+      <div class="card">
+        <div class="card-title">PV of All Cash Flows</div>
+        <div class="card-value text-green">$1,299K</div>
+        <div class="card-note">= NPV</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 10. SENSITIVITY ========== -->
+<section id="sensitivity">
+  <div class="container">
+    <h2><span class="icon">⚡</span> Sensitivity Analysis</h2>
+
+    <h3>3 Scenarios (ปี 3)</h3>
+    <div class="scenario-grid">
+      <div class="scenario-card bear">
+        <h4 style="color:var(--red)">Bear Case</h4>
+        <div class="metric-row"><span>MAU</span><span class="fw-700">60,000</span></div>
+        <div class="metric-row"><span>Conversion</span><span class="fw-700">3%</span></div>
+        <div class="metric-row"><span>Revenue</span><span class="fw-700">$297K</span></div>
+        <div class="metric-row"><span>Net Profit</span><span class="fw-700 text-green">+$88K</span></div>
+        <div class="metric-row"><span>NPV (5yr)</span><span class="fw-700 text-green">+$420K</span></div>
+        <div class="metric-row"><span>IRR</span><span class="fw-700 text-orange">85%</span></div>
+      </div>
+      <div class="scenario-card base">
+        <h4 style="color:var(--accent2)">Base Case</h4>
+        <div class="metric-row"><span>MAU</span><span class="fw-700">120,000</span></div>
+        <div class="metric-row"><span>Conversion</span><span class="fw-700">6.7%</span></div>
+        <div class="metric-row"><span>Revenue</span><span class="fw-700">$594K</span></div>
+        <div class="metric-row"><span>Net Profit</span><span class="fw-700 text-green">+$385K</span></div>
+        <div class="metric-row"><span>NPV (5yr)</span><span class="fw-700 text-green">+$1,299K</span></div>
+        <div class="metric-row"><span>IRR</span><span class="fw-700 text-green">165%</span></div>
+      </div>
+      <div class="scenario-card bull">
+        <h4 style="color:var(--green)">Bull Case</h4>
+        <div class="metric-row"><span>MAU</span><span class="fw-700">200,000</span></div>
+        <div class="metric-row"><span>Conversion</span><span class="fw-700">10%</span></div>
+        <div class="metric-row"><span>Revenue</span><span class="fw-700">$1.19M</span></div>
+        <div class="metric-row"><span>Net Profit</span><span class="fw-700 text-green">+$980K</span></div>
+        <div class="metric-row"><span>NPV (5yr)</span><span class="fw-700 text-green">+$3,200K</span></div>
+        <div class="metric-row"><span>IRR</span><span class="fw-700 text-green">320%</span></div>
+      </div>
+    </div>
+
+    <h3>Key Risk Factors</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ปัจจัย</th><th>ผลกระทบ</th><th>วิธีลดความเสี่ยง</th></tr></thead>
+        <tbody>
+          <tr><td>NVIDIA API ขึ้นราคา 2×</td><td class="text-red">+$47K/ปี</td><td>เพิ่ม cache hit rate, ใช้ smaller model</td></tr>
+          <tr><td>Conversion rate ต่ำกว่า 1%</td><td class="text-red">Revenue ลด 70%</td><td>เพิ่ม free tier value, ปรับ pricing</td></tr>
+          <tr><td>คู่แข่งสถาบันใหญ่ลงแอป AI</td><td class="text-orange">แย่งส่วนแบ่ง</td><td>เน้นจุดเด่น: AI+กราฟ+ถูกกว่า</td></tr>
+          <tr><td>TCAS เปลี่ยนระบบ</td><td class="text-orange">ต้องอัปเดต content</td><td>จ้าง tutor อัปเดต, ปรับ prompt AI</td></tr>
+          <tr><td>คลิปวิดีโอไม่ได้ quality</td><td class="text-orange">เด็กไม่ซื้อ</td><td>QA process ก่อนอัปโหลด</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 11. ROADMAP ========== -->
+<section id="roadmap">
+  <div class="container">
+    <h2><span class="icon">🗺️</span> แผน Startup ระยะแรก</h2>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <h4>Phase 1: MVP + Validation (เดือน 1-6)</h4>
+        <p style="color:var(--text2);font-size:14px;margin-bottom:12px">Burn Rate ~$8K/เดือน</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>รายการ</th><th class="text-right">งบ 6 เดือน</th></tr></thead>
+            <tbody>
+              <tr><td>2 Founders</td><td class="text-right">$5,143</td></tr>
+              <tr><td>NVIDIA API</td><td class="text-right">$500</td></tr>
+              <tr><td>Supabase + Vercel + Infra</td><td class="text-right">$300</td></tr>
+              <tr><td>ติวเตอร์ 5 คอร์สแรก</td><td class="text-right">$3,929</td></tr>
+              <tr><td>Marketing (organic)</td><td class="text-right">$2,000</td></tr>
+              <tr><td>อื่นๆ</td><td class="text-right">$500</td></tr>
+              <tr style="background:rgba(108,92,231,.06)"><td class="fw-700">รวม 6 เดือน</td><td class="text-right fw-700 text-accent">$12,372</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout callout-orange" style="margin-top:12px">
+          เป้า: 5 คอร์สพร้อมขาย · AI chat + กราฟ · 500 MAU · 15 paid (3%) · Revenue ~$1K · ขาดทุน ~$11K
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <h4>Phase 2: Product-Market Fit (เดือน 7-18)</h4>
+        <ul style="color:var(--text2);font-size:14px;list-style:disc;padding-left:20px">
+          <li>เพิ่มคอร์สเป็น 20 คอร์ส — ครอบคลุม A-Level ทุกวิชาหลัก</li>
+          <li>เพิ่ม TGAT + TPAT คอร์ส ช่วง peak ต.ค.-ม.ค.</li>
+          <li>PromptPay + TrueMoney + 7-Eleven จ่ายเงินง่าย</li>
+          <li>Line OA integration — แจ้งเตือน + ตอบคำถาม</li>
+          <li>School Ambassador program — นักเรียนนำเสนอ ได้ส่วนลด 10%</li>
+          <li>ASO + SEO ภาษาไทย</li>
+        </ul>
+      </div>
+
+      <div class="timeline-item">
+        <h4>Phase 3: Scale (เดือน 19-36)</h4>
+        <ul style="color:var(--text2);font-size:14px;list-style:disc;padding-left:20px">
+          <li>ครบ 30 คอร์ส — ครอบคลุม TCAS ทั้งหมด</li>
+          <li>Seed Round $200-500K (ถ้าจำเป็น) — scale marketing + ทีม</li>
+          <li>ทีมเพิ่ม 3-5 คน (Dev, Content, Growth, CS)</li>
+          <li>Partnership สถาบันกวดวิชา (B2B2C)</li>
+          <li>เพิ่ม feature: Study Squad + leaderboard</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>แผนการเงินระยะแรก</h3>
+    <div class="callout callout-orange">
+      <strong>เดือน 0-6:</strong> ทุนเริ่มต้น $50K → ใช้ $12K → เหลือ $38K<br>
+      <strong>เดือน 7-12:</strong> ใช้ $8K/เดือน → ใช้ $48K → เหลือ -$10K → ต้องหาทุนเพิ่ม<br>
+      <strong>→ ช่วงเดือน 8-10:</strong> ขอ Seed Round $200-500K หรือใช้ Revenue จาก peak season
+    </div>
+    <div class="callout callout-green" style="margin-top:8px">
+      ถ้า Revenue ปี 2 เข้าตามแผน ($202K): ไม่ต้องขอทุนเพิ่ม
+    </div>
+  </div>
+</section>
+
+<!-- ========== 12. COMPARISON ========== -->
+<section id="comparison">
+  <div class="container">
+    <h2><span class="icon">⚖️</span> Monthly vs Annual</h2>
+    <p class="section-desc">เปรียบเทียบโมเดล Subscription รายเดือน vs Annual Course</p>
+
+    <div class="vs-grid">
+      <div class="vs-card loser">
+        <h3 style="color:var(--text2);margin-bottom:16px">Monthly Subscription</h3>
+        <div class="metric-row"><span>ARPU/ปี</span><span class="fw-700">$34</span></div>
+        <div class="metric-row"><span>Conversion</span><span class="fw-700">2-5%</span></div>
+        <div class="metric-row"><span>Payback</span><span class="fw-700 text-red">3.4 ปี</span></div>
+        <div class="metric-row"><span>NPV</span><span class="fw-700">+$324K</span></div>
+        <div class="metric-row"><span>IRR</span><span class="fw-700 text-orange">61%</span></div>
+        <div class="metric-row"><span>Gross Margin ปี 3</span><span class="fw-700">78%</span></div>
+        <div class="metric-row"><span>Break-even</span><span class="fw-700 text-red">69,000 MAU</span></div>
+        <div class="metric-row"><span>Churn Risk</span><span class="fw-700 text-red">สูง</span></div>
+        <div class="metric-row"><span>ช่องทางจ่าย</span><span class="fw-700">credit card</span></div>
+      </div>
+      <div class="vs-card winner">
+        <h3 style="color:var(--green);margin-bottom:16px">Annual Course ✓</h3>
+        <div class="metric-row"><span>ARPU/ปี</span><span class="fw-700 text-green">$74</span></div>
+        <div class="metric-row"><span>Conversion</span><span class="fw-700 text-green">3-6.7%</span></div>
+        <div class="metric-row"><span>Payback</span><span class="fw-700 text-green">1.9 ปี</span></div>
+        <div class="metric-row"><span>NPV</span><span class="fw-700 text-green">+$1,299K</span></div>
+        <div class="metric-row"><span>IRR</span><span class="fw-700 text-green">165%</span></div>
+        <div class="metric-row"><span>Gross Margin ปี 3</span><span class="fw-700 text-green">86%</span></div>
+        <div class="metric-row"><span>Break-even</span><span class="fw-700 text-green">1,139 paid</span></div>
+        <div class="metric-row"><span>Churn Risk</span><span class="fw-700 text-green">ต่ำ</span></div>
+        <div class="metric-row"><span>ช่องทางจ่าย</span><span class="fw-700 text-green">PromptPay/7-11</span></div>
+      </div>
+    </div>
+
+    <div class="callout callout-green">
+      <strong>สรุป: Annual Course Model ดีกว่าทุกด้าน</strong> — โดยเฉพาะในไทยที่เด็กคุ้นชินกับจ่ายค่าติวครั้งเดียวต่อปี
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <p>TCAS Navigator Financial Model — อัปเดตล่าสุด: 2026-04-15</p>
+    <p style="margin-top:4px">B2C Annual Course + AI Tutor | Content Buyout Model | 5-Year Projection</p>
+  </div>
+</footer>
+
+<script>
+// Color palette
+const C = {
+  accent: '#6c5ce7', accent2: '#a29bfe',
+  green: '#00b894', green2: '#55efc4',
+  blue: '#74b9ff', blue2: '#0984e3',
+  orange: '#fdcb6e', orange2: '#e17055',
+  pink: '#fd79a8', red: '#ff6b6b',
+  surface: '#1c1f2e', text2: '#94979e'
+};
+
+Chart.defaults.color = '#94979e';
+Chart.defaults.borderColor = 'rgba(42,45,62,.5)';
+Chart.defaults.font.family = "'Segoe UI','Noto Sans Thai',sans-serif";
+
+// Revenue by Tier (Stacked Bar)
+new Chart(document.getElementById('revenueChart'), {
+  type: 'bar',
+  data: {
+    labels: ['ปี 1','ปี 2','ปี 3','ปี 4','ปี 5'],
+    datasets: [
+      { label: 'Single (฿1,290)', data: [290,1612,4644,7740,11610], backgroundColor: C.blue },
+      { label: 'Pack (฿2,990)', data: [449,2990,8970,14950,22425], backgroundColor: C.accent },
+      { label: 'Full (฿4,990)', data: [225,2495,7186,11976,17964], backgroundColor: C.green }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16 } } },
+    scales: {
+      x: { stacked: true },
+      y: { stacked: true, ticks: { callback: v => '฿'+v/1000+'K' } }
+    }
+  }
+});
+
+// Revenue Growth Line
+new Chart(document.getElementById('revenueLineChart'), {
+  type: 'line',
+  data: {
+    labels: ['ปี 1','ปี 2','ปี 3','ปี 4','ปี 5'],
+    datasets: [{
+      label: 'Revenue (฿K)',
+      data: [963, 7100, 20800, 34670, 52000],
+      borderColor: C.green,
+      backgroundColor: 'rgba(0,184,148,.1)',
+      fill: true,
+      tension: .4,
+      pointRadius: 5,
+      pointBackgroundColor: C.green
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { ticks: { callback: v => '฿'+v/1000+'K' } }
+    }
+  }
+});
+
+// Cost Stacked Bar
+new Chart(document.getElementById('costChart'), {
+  type: 'bar',
+  data: {
+    labels: ['ปี 1','ปี 2','ปี 3','ปี 4','ปี 5'],
+    datasets: [
+      { label: 'Variable', data: [6468,24963,65275,109521,166854], backgroundColor: C.orange },
+      { label: 'Tutor', data: [5243,4386,3700,1429,1429], backgroundColor: C.pink },
+      { label: 'OpEx', data: [35000,79000,140000,209000,277000], backgroundColor: C.accent2 }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16 } } },
+    scales: {
+      x: { stacked: true },
+      y: { stacked: true, ticks: { callback: v => '$'+v/1000+'K' } }
+    }
+  }
+});
+
+// Cost Pie (Year 3)
+new Chart(document.getElementById('costPieChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Variable (31%)', 'Tutor (2%)', 'OpEx (67%)'],
+    datasets: [{
+      data: [65275, 3700, 140000],
+      backgroundColor: [C.orange, C.pink, C.accent2]
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16 } },
+      title: { display: true, text: 'ปี 3 (120K MAU)', color: C.text2, font: { size: 12 } }
+    }
+  }
+});
+
+// P&L Chart
+new Chart(document.getElementById('pnlChart'), {
+  type: 'bar',
+  data: {
+    labels: ['ปี 1','ปี 2','ปี 3','ปี 4','ปี 5'],
+    datasets: [
+      { label: 'Revenue', data: [27.5,202.8,594.3,990.4,1485], backgroundColor: C.green },
+      { label: 'Cost', data: [46.7,108.3,209.0,320.0,445.3], backgroundColor: C.red + '99' },
+      { label: 'Net Profit', data: [-19.2,94.5,385.3,670.5,1039.7], backgroundColor: C.blue }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16 } } },
+    scales: { y: { ticks: { callback: v => '$'+v+'K' } } }
+  }
+});
+
+// Margin Chart
+new Chart(document.getElementById('marginChart'), {
+  type: 'line',
+  data: {
+    labels: ['ปี 1','ปี 2','ปี 3','ปี 4','ปี 5'],
+    datasets: [
+      {
+        label: 'Gross Margin',
+        data: [57, 83, 86, 86, 87],
+        borderColor: C.green,
+        backgroundColor: 'rgba(0,184,148,.1)',
+        fill: true,
+        tension: .3
+      },
+      {
+        label: 'Operating Margin',
+        data: [-70, 47, 65, 68, 70],
+        borderColor: C.accent2,
+        backgroundColor: 'rgba(162,155,254,.1)',
+        fill: true,
+        tension: .3
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16 } } },
+    scales: {
+      y: { ticks: { callback: v => v+'%' } }
+    }
+  }
+});
+
+// Cumulative Cash Flow
+new Chart(document.getElementById('cashflowChart'), {
+  type: 'line',
+  data: {
+    labels: ['Seed','ปี 1','ปี 2','ปี 3','ปี 4','ปี 5'],
+    datasets: [{
+      label: 'Cumulative Cash Flow ($K)',
+      data: [-50, -69.2, 25.3, 410.6, 1081.1, 2120.8],
+      borderColor: C.accent2,
+      backgroundColor: function(ctx) {
+        const chart = ctx.chart;
+        const {ctx: c, chartArea} = chart;
+        if (!chartArea) return 'rgba(108,92,231,.1)';
+        const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+        gradient.addColorStop(0, 'rgba(0,184,148,.15)');
+        gradient.addColorStop(0.5, 'rgba(108,92,231,.05)');
+        gradient.addColorStop(1, 'rgba(255,107,107,.15)');
+        return gradient;
+      },
+      fill: true,
+      tension: .4,
+      pointRadius: 6,
+      pointBackgroundColor: [-50,-69.2,25.3,410.6,1081.1,2120.8].map(v => v < 0 ? C.red : C.green),
+      borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { ticks: { callback: v => '$'+v+'K' } }
+    }
+  }
+});
+</script>
+
+</body>
+</html>
